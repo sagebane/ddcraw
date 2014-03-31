@@ -642,53 +642,88 @@ void write2bayer(FILE *ofp, ushort *image, ushort w, ushort h)
 
 }
 
-void write2ppm(FILE *ofp, ushort *image, ushort width, ushort height)
+
+typedef struct 
+{
+	unsigned short b;
+	unsigned short g;
+	unsigned short r;
+}BGR;
+
+int bayer16torgb24(BGR *rgb24, unsigned short *bayer, int w, int h)
+{
+	int i,j;
+	int px0, px1, px2, px3;
+
+	if ((rgb24 == NULL) || (bayer == NULL))
+		return -1;
+	if ((w <= 0) || (h <= 0))
+		return -1;
+
+	for (j = 0; j < h; j+= 2){
+		fprintf(stderr, "%s... %d, %d, %d\n", __FUNCTION__, w, h, j);
+		for (i = 0; i < w; i += 2){
+			px0 = j * w + i; 
+			px1 = px0 + 1; 
+			px2 = px0 + w;
+			px3 = px0 + w + 1;
+			
+			if (i == 0 || j == 0 || i == w-2 || j == h - 2){
+				rgb24[px0].b = rgb24[px1].b = rgb24[px2].b = rgb24[px3].b = bayer[px2];
+				rgb24[px0].g = bayer[px0];
+				rgb24[px1].g = rgb24[px2].g = (bayer[px0] + bayer[px3]) / 2;
+				rgb24[px3].g = bayer[px3];
+				rgb24[px0].r = rgb24[px1].r = rgb24[px2].r = rgb24[px3].r = bayer[px2];
+			}
+			else {
+				rgb24[px0].b = (bayer[px0 - w] + bayer[px0 + w]) / 2;
+				rgb24[px0].g = bayer[px0];
+				rgb24[px0].r = (bayer[px0 + 1] + bayer[px0 - 1]) / 2;
+
+				rgb24[px1].b = bayer[px1];
+				rgb24[px1].g = (bayer[px1 - 1] + bayer[px1 + 1] + bayer[px1 + w] +
+				                bayer[px1 - w]) / 4;
+				rgb24[px1].r = (bayer[px1 - 1 + w] + bayer[px1 - 1 - w] + bayer[px1 + 1 + w] +
+				                bayer[px1 + 1 - w]) / 4;
+
+				rgb24[px2].b = (bayer[px2 - 1 + w] + bayer[px2 - 1 - w] + bayer[px2 + 1 + w] +
+				                bayer[px2 + 1 - w]) / 4;
+				rgb24[px2].g = (bayer[px2 - 1] + bayer[px2 + 1] + bayer[px2 + w] +
+				                bayer[px2 - w]) / 4;
+				rgb24[px2].r = bayer[px2];
+
+				rgb24[px3].b = (bayer[px3+w] + bayer[px3-w]) / 2;
+				rgb24[px3].g = bayer[px3];
+				rgb24[px3].r = (bayer[px3 + 1] + bayer[px3 - 1]) / 2;
+			}
+		}
+	}
+	
+	return 0;
+}
+void write2ppm(FILE *ofp, BGR *rgb24, ushort width, ushort height)
 {
 	uchar *ppm;
 	ushort *ppm2;
 	int row, col;
-	int output_bps = 16;
-
+	int output_bps = 8;
+	
 	ppm = (uchar *) calloc (width, colors*output_bps/8);
-	ppm2 = (ushort *) ppm;
 
 	fprintf (ofp, "P%d\n%d %d\n%d\n",
 		 colors/2+5, width, height, (1 << output_bps)-1);
 
 	for (row=0; row < height; row++) {
 		for (col=0; col < width; col++){
-			if(!(row % 2)){
-				if(!(col % 2)){
-					ppm2[col*colors+0] = raw_image[width * row +col]; /* r */
-					ppm2[col*colors+1] = 0;
-					ppm2[col*colors+2] = 0;
-				}
-				else{
-					ppm2[col*colors+0] = 0;
-					ppm2[col*colors+1] = raw_image[width * row +col]; /* g */
-					ppm2[col*colors+2] = 0;
-				}
-			}
-			else {
-				if(!(col % 2)){
-					ppm2[col*colors+0] = 0;
-					ppm2[col*colors+1] = raw_image[width * row +col]; /* g */
-					ppm2[col*colors+2] = 0;
-				}else{
-					ppm2[col*colors+0] = 0;
-					ppm2[col*colors+1] = 0;
-					ppm2[col*colors+2] = raw_image[width * row +col]; /* b */
-				}
-			}
-			
+			ppm[col*colors+0] = rgb24[width*row + col].r>>8 ;
+			ppm[col*colors+1] = rgb24[width*row + col].g>>8;
+			ppm[col*colors+2] = rgb24[width*row + col].b>>8;
 		}
-
 		fwrite (ppm, colors*output_bps/8, width, ofp);
 	}
 	
 	free (ppm);
 }
-
 
 int main(int argc, char **argv)
 {
@@ -700,7 +735,7 @@ int main(int argc, char **argv)
 	
 	char head[32], *cp;
 	char ifname[32], ofname[32];
-
+	BGR *rgb24;
 
 	strcpy(ifname, argv[1]);
 		
@@ -761,15 +796,20 @@ int main(int argc, char **argv)
 
 	iwidth = raw_width;
 	iheight = raw_height;
-	
-	image = (ushort (*)[4]) calloc (iheight, iwidth*sizeof *image);
 
-	write2bayer(ofp, raw_image, raw_width, raw_height);
+	rgb24 = (BGR *)malloc(raw_width * raw_height * 3 * 2);
 	
-//	write2ppm(ofp, raw_image, raw_width, raw_height);
+	bayer16torgb24(rgb24, raw_image, raw_width, raw_height);
+	
+//	image = (ushort (*)[4]) calloc (iheight, iwidth*sizeof *image);
+	
+//	write2bayer(ofp, raw_image, raw_width, raw_height);
+	
+	write2ppm(ofp, rgb24, raw_width, raw_height);
 	
 	printf("write to file %s\n", ofname);
-	
+
+	free(rgb24);
 	free(raw_image);
 	
 	fclose(ifp);
