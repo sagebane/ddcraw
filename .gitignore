@@ -1,0 +1,7 @@
+*.cr2
+*.ppm
+cscope*
+dcraw
+*.o
+test
+*~

@@ -3879,11 +3879,14 @@ void CLASS scale_colors()
 		else
 			fprintf (stderr,_("%s: Cannot use camera white balance.\n"), ifname);
 	}
-	if (pre_mul[1] == 0) pre_mul[1] = 1;
-	if (pre_mul[3] == 0) pre_mul[3] = colors < 4 ? pre_mul[1] : 1;
+	if (pre_mul[1] == 0)
+		pre_mul[1] = 1;
+	if (pre_mul[3] == 0)
+		pre_mul[3] = colors < 4 ? pre_mul[1] : 1;
 	dark = black;
 	sat = maximum;
-	if (threshold) wavelet_denoise();
+	if (threshold)
+		wavelet_denoise();
 	maximum -= black;
 	for (dmin=DBL_MAX, dmax=c=0; c < 4; c++) {
 		if (dmin > pre_mul[c])
@@ -3891,7 +3894,8 @@ void CLASS scale_colors()
 		if (dmax < pre_mul[c])
 			dmax = pre_mul[c];
 	}
-	if (!highlight) dmax = dmin;
+	if (!highlight)
+		dmax = dmin;
 	FORC4 scale_mul[c] = (pre_mul[c] /= dmax) * 65535.0 / maximum;
 	if (verbose) {
 		fprintf (stderr,
@@ -3991,24 +3995,24 @@ void CLASS pre_interpolate()
 
 void CLASS border_interpolate (int border)
 {
-  unsigned row, col, y, x, f, c, sum[8];
+	unsigned row, col, y, x, f, c, sum[8];
 
-  for (row=0; row < height; row++)
-    for (col=0; col < width; col++) {
-      if (col==border && row >= border && row < height-border)
-	col = width-border;
-      memset (sum, 0, sizeof sum);
-      for (y=row-1; y != row+2; y++)
-	for (x=col-1; x != col+2; x++)
-	  if (y < height && x < width) {
-	    f = fcol(y,x);
-	    sum[f] += image[y*width+x][f];
-	    sum[f+4]++;
-	  }
-      f = fcol(row,col);
-      FORCC if (c != f && sum[c+4])
-	image[row*width+col][c] = sum[c] / sum[c+4];
-    }
+	for (row=0; row < height; row++)
+		for (col=0; col < width; col++) {
+			if (col==border && row >= border && row < height-border)
+				col = width-border;
+			memset (sum, 0, sizeof sum);
+			for (y=row-1; y != row+2; y++)
+				for (x=col-1; x != col+2; x++)
+					if (y < height && x < width) {
+						f = fcol(y,x);
+						sum[f] += image[y*width+x][f];
+						sum[f+4]++;
+					}
+			f = fcol(row,col);
+			FORCC if (c != f && sum[c+4])
+				image[row*width+col][c] = sum[c] / sum[c+4];
+		}
 }
 
 void CLASS lin_interpolate()
@@ -4229,7 +4233,7 @@ void CLASS ppg_interpolate()
     }
 /*  Calculate blue for red pixels and vice versa:		*/
   for (row=1; row < height-1; row++)
-    for (col=1+(FC(row,1) & 1), c=2-FC(row,col); col < width-1; col+=2) {
+	  for (col=1+(FC(row,1) & 1), c=2-FC(row,col); col < width-1; col+=2) {
       pix = image + row*width+col;
       for (i=0; (d=dir[i]+dir[i+1]) > 0; i++) {
 	diff[i] = ABS(pix[-d][c] - pix[d][c]) +
@@ -4517,7 +4521,8 @@ void CLASS ahd_interpolate()
 	short (*lab)[TS][TS][3], (*lix)[3];
 	char (*homo)[TS][TS], *buffer;
 
-	if (verbose) fprintf (stderr,_("AHD interpolation...\n"));
+	if (verbose)
+		fprintf (stderr,_("AHD interpolation...\n"));
 
 	cielab (0,0);
 	border_interpolate(5);

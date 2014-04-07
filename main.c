@@ -661,7 +661,7 @@ int bayer16torgb24(BGR *rgb24, unsigned short *bayer, int w, int h)
 		return -1;
 
 	for (j = 0; j < h; j+= 2){
-		fprintf(stderr, "%s... %d, %d, %d\n", __FUNCTION__, w, h, j);
+//		fprintf(stderr, "%s... %d, %d, %d\n", __FUNCTION__, w, h, j);
 		for (i = 0; i < w; i += 2){
 			px0 = j * w + i; 
 			px1 = px0 + 1; 
@@ -723,6 +723,59 @@ void write2ppm(FILE *ofp, BGR *rgb24, ushort width, ushort height)
 	}
 	
 	free (ppm);
+}
+
+int plot_histogram(ushort *cfa, int w, int h)
+{
+	
+	int *histo_r, *histo_gr, *histo_gb, *histo_b;
+	int histo_size = w*h/4;
+	int i, j;
+
+	FILE * gPipe = popen ("gnuplot -persistent", "w");
+	
+	histo_r = (int *)malloc(histo_size * sizeof(int));
+	histo_gr = (int *)malloc(histo_size * sizeof(int));
+	histo_gb = (int *)malloc(histo_size * sizeof(int));
+	histo_b = (int *)malloc(histo_size * sizeof(int));
+
+	memset(histo_r, 0, histo_size * sizeof(int));
+	memset(histo_gr, 0, histo_size * sizeof(int));
+	memset(histo_gb, 0, histo_size * sizeof(int));
+	memset(histo_b, 0, histo_size * sizeof(int));
+	
+	for(i=0;i<h;i++){
+		if (i%2){
+			for(j=0;j<w;j++){
+				if (j%2)
+					histo_r[cfa[i*w+j]]++;
+				else
+					histo_gr[cfa[i*w+j]]++;
+			}
+		}
+		else {
+			for(j=0;j<w;j++){
+				if (j%2)
+					histo_gb[cfa[i*w+j]]++;
+				else
+					histo_b[cfa[i*w+j]]++;
+			}
+		}
+	}
+
+	/* for(i=0;i<histo_size;i++){ */
+	/* 	printf("%d %d %d %d\n", histo_r[i], histo_gr[i], histo_gb[i], histo_b[i]);  */
+	/* 	fprintf(gPipe, "%d %d\n", i, histo_r[i]); */
+	/* } */
+
+	fclose(gPipe);
+	
+	free(histo_r);
+	free(histo_gr);
+	free(histo_gb);
+	free(histo_b);
+ 
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -797,6 +850,8 @@ int main(int argc, char **argv)
 	iwidth = raw_width;
 	iheight = raw_height;
 
+	plot_histogram(raw_image, raw_width, raw_height);
+	
 	rgb24 = (BGR *)malloc(raw_width * raw_height * 3 * 2);
 	
 	bayer16torgb24(rgb24, raw_image, raw_width, raw_height);
@@ -814,8 +869,6 @@ int main(int argc, char **argv)
 	
 	fclose(ifp);
 	fclose(ofp);
-	
+ 	
 	return 0;
 }
-
-
