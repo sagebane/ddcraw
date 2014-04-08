@@ -88,28 +88,33 @@ int bez_adj(gnuplot_ctrl *h, int target, int s, int how)
 
 	return 0;
 }
+
+
 int print_curve(void)
 {
 	float t = 0.0;
 	float x, y;
 	float bez0,bez1,bez2,bez3;
 	int i;
+	int curve[4096];
 	
 	printf("\n");
-	for(i=0,t=0.0;t<1.0;t += 1.0/4096){
-		bez0 = powf((1-t), 3);
-		bez1 = powf((1-t), 2) * 3 * t;
-		bez2 = 3 * (1-t) * t * t;
+	for(i=1,t=0.0;t<1.0;t += 0.0001){
+		bez0 = powf((1.0-t), 3);
+		bez1 = powf((1.0-t), 2) * 3 * t;
+		bez2 = 3 * (1.0-t) * t * t;
 		bez3 = powf(t, 3);
 		x =  bez0 * 0.0 + bez1 * xone + bez2 * xtwo + bez3 * 1.0;
-		y =  bez0 * 0.0 + bez1 * yone + bez2 * ytwo + bez3 * 1.0;
-		printf("%f, %f,%f,%f,%f,  %f,%f\n", t,
-		       bez0,bez1,bez2,bez3,
-		      x*4096, y*1023);
-		i++;
+
+		if ((int)(x*4096) == i){
+			y =  bez0 * 0.0 + bez1 * yone + bez2 * ytwo + bez3 * 1.0;
+			curve[i] = y*1023;
+			i++;
+		}
 	}
-	printf("%d\n", i);
-	
+	for(i=0;i<4096;i++){
+		printf("%d\n", curve[i]);
+	}
 }
 
 int plot_bezier(gnuplot_ctrl *h)
@@ -218,6 +223,7 @@ int main(int argc, char **argv)
 			break;
 		usleep(500*1000);
 	}
+
 	print_curve();
 	
 	gnuplot_close(gam);
